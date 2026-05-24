@@ -9,56 +9,45 @@
 """
 
 from telethon import TelegramClient, events
+from telethon.sessions import StringSession
 from telethon.tl.functions.chatlists import CheckChatlistInviteRequest
 from telethon.errors import FloodWaitError
 from datetime import datetime
-import re
 import asyncio
+import os
 
 # ============================================================
-# ШАГ 1 — ТВОИ ДАННЫЕ
+# ДАННЫЕ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ RAILWAY
 # ============================================================
 
-API_ID = 32669512
-API_HASH = "930ddf1d3a8298d7eb4999560850147d"
+API_ID = int(os.environ["API_ID"])
+API_HASH = os.environ["API_HASH"]
+SESSION = os.environ["SESSION"]
+OUTPUT_CHANNEL = os.environ.get("OUTPUT_CHANNEL", "@kjbrcrc")
+FOLDER_INVITE = os.environ.get("FOLDER_INVITE", "yefFo_EuHDQ4MDcy")
 
 # ============================================================
-# ШАГ 2 — КУДА ОТПРАВЛЯТЬ ВАКАНСИИ
-# ============================================================
-
-OUTPUT_CHANNEL = "@kjbrcrc"
-
-# ============================================================
-# ШАГ 3 — ССЫЛКА НА ПАПКУ
-# ============================================================
-
-FOLDER_INVITE = "yefFo_EuHDQ4MDcy"
-
-# ============================================================
-# ШАГ 4 — КЛЮЧЕВЫЕ СЛОВА (кого ищут)
+# КЛЮЧЕВЫЕ СЛОВА (кого ищут)
 # ============================================================
 
 KEYWORDS = [
     "таргетолог",
     "таргетолога",
     "авитолог",
-
 ]
 
 # ============================================================
-# ШАГ 5 — СТОП-СЛОВА (предложения услуг — пропускаем)
+# СТОП-СЛОВА (предложения услуг — пропускаем)
 # ============================================================
 
 STOP_WORDS = [
     "предлагаю услуги",
     "настрою",
     "#помогу",
-    "Яндекс",
+    "яндекс",
     "запускаю",
-    "vk",
-    "VK",
-    "ВК",
-    "вк",
+    " vk ",
+    "вконтакте",
     "предлагаю свои услуги",
     "оказываю услуги",
     "предоставляю услуги",
@@ -90,6 +79,7 @@ STOP_WORDS = [
     "мои работы",
     "примеры работ",
     "я таргетолог",
+    "я авитолог",
     "я smm",
     "я специалист",
     "я маркетолог",
@@ -111,14 +101,13 @@ STOP_WORDS = [
     "стоимость работ",
 ]
 
-# Как часто обновлять список чатов из папки (в секундах)
 FOLDER_REFRESH_INTERVAL = 3600  # 1 час
 
 # ============================================================
 # КОД
 # ============================================================
 
-client = TelegramClient("vacancy_session", API_ID, API_HASH)
+client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 
 current_chat_ids: set = set()
 
@@ -241,14 +230,11 @@ async def folder_refresh_loop():
 async def main():
     global current_chat_ids
 
-    if OUTPUT_CHANNEL in ("@твой_канал", "", None):
-        print("❌ Укажи OUTPUT_CHANNEL")
-        return
-
     print("🔍 Загружаю чаты из папки...")
     entities, chat_ids = await load_chats_from_folder()
 
     if not entities:
+        print("❌ Не удалось загрузить чаты, проверь FOLDER_INVITE")
         return
 
     current_chat_ids = set(chat_ids)
@@ -260,7 +246,6 @@ async def main():
     print(f"   Ключевые слова: {KEYWORDS}")
     print(f"   Стоп-слов: {len(STOP_WORDS)}")
     print(f"   Обновление папки: каждые {FOLDER_REFRESH_INTERVAL // 60} мин")
-    print("   Для остановки нажми Ctrl+C\n")
 
     asyncio.ensure_future(folder_refresh_loop())
     await client.run_until_disconnected()
